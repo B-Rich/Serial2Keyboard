@@ -8,19 +8,26 @@
 #include <StaticConstants.au3>
 #include <WindowsConstants.au3>
 #include <TrayConstants.au3>
+#include <MsgBoxConstants.au3>
+#include <String.au3>
+#include <Array.au3>
 #include 'CommMG.au3'
+
 
 HotKeySet("+!d", "ExitProgram")
 
 Opt("TrayMenuMode", 3)
+Opt("TrayOnEventMode", 1)
 
 Local $sportSetError
 
-Local $idOpen = TrayCreateItem("แก้ไขการเชื่อมต่อ")
-Local $idExit = TrayCreateItem("ออกจากโปรแกรม")
+Local $idOpen = TrayCreateItem("Open")
+Local $idExit = TrayCreateItem("Exit")
 TraySetState($TRAY_ICONSTATE_SHOW)
+TrayItemSetOnEvent($idOpen, "ShowGUI")
+TrayItemSetOnEvent($idExit, "ExitProgram")
 
-#Region ### START Koda GUI section ### Form=C:\Users\Max\OneDrive\เอกสาร\Serial2Keyboard.kxf
+#Region ### START Koda GUI section ###
 
 $Form = GUICreate("Serial2Keyboard", 250, 170, -1, -1)
 GUICtrlCreateGroup("Connect config", 8, 8, 233, 73)
@@ -48,27 +55,52 @@ While 1
 			Exit
 		Case $ButtonStart
 			If GUICtrlRead($Port) == "" Then
-				MsgBox(16, "ผิดพลาด", "กรุณาเลือกพอร์ตที่ถูกต้อง")
+				MsgBox(16, "Error", "Please select a COM port")
 			Else
 				$setport = StringReplace(GUICtrlRead($Port), 'COM', '')
 				$resOpen = _CommSetPort($setport, $sportSetError, GUICtrlRead($Baudrates))
 				If $resOpen = 0 Then
-					MsgBox(16, "ผิดพลาด", $sportSetError)
+					MsgBox(16, "Couldn't open port", $sportSetError)
 				Else
 					GUICtrlSetState($ButtonStart, $GUI_DISABLE)
 
 					GUISetState(@SW_HIDE, $Form)
-					TrayTip("Serial2Keyboard", "กด Shift-Alt-d เมื่อต้องการออกจากโปรแกรม", 5)
+					TrayTip("Serial2Keyboard", "Press Shift-Alt-d to exit", 5)
 					While 1
-						Switch TrayGetMsg()
+					   $tray = TrayGetMsg()
+					   ConsoleWrite($tray)
+
+						Switch $tray
 							Case $idExit
 								Exit
 							Case $idOpen
 								GUISetState(@SW_SHOW, $Form)
 						EndSwitch
-						$Str = _Commgetstring()
+
+						$Str = _CommGetLine(Chr(3), 1000)		; get until 0x03 (ETX)
+
 						If $Str <> "" Then
-							Send($Str)
+						   ;ConsoleWrite("RAW: " & _StringToHex($Str) & @CRLF)
+						   $aStr = StringSplit($Str, "")
+						   ;_ArrayDisplay($aStr)
+
+						   $count = 0		; send only 10 characters
+
+						   For $i = 1 To $aStr[0]
+
+							  If ($aStr[$i] >= "0" And $aStr[$i] <= "9") Or ($aStr[$i] >= "A" And $aStr[$i] <= "F") Then
+								 ConsoleWrite($aStr[$i])
+								 Send($aStr[$i])
+								 $count += 1
+
+								 If $count = 10 Then
+									ExitLoop
+								 EndIf
+							  EndIf
+						   Next
+
+						   ConsoleWrite(@CRLF)
+						   ;Send($Str)
 						EndIf
 					WEnd
 				EndIf
@@ -77,5 +109,10 @@ While 1
 WEnd
 
 Func ExitProgram()
-	Exit
-EndFunc
+   _CommClosePort()
+   Exit
+ EndFunc
+
+ Func ShowGUI()
+	GUISetState(@SW_SHOW, $Form)
+ EndFunc
