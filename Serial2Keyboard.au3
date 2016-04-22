@@ -1,5 +1,5 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
-#AutoIt3Wrapper_Icon=Dtafalonso-Modern-Xp-ModernXP-09-Keyboard.ico
+#AutoIt3Wrapper_Icon=serial2keyboard.ico
 #AutoIt3Wrapper_Outfile=Serial2Keyboard.exe
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <ButtonConstants.au3>
